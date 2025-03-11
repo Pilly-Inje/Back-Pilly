@@ -1,0 +1,59 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.3'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.inje'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	google()
+	mavenCentral()
+}
+
+sourceSets {
+	main {
+		resources {
+			srcDirs = ['src/main/resources']
+		}
+	}
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	//implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'com.google.cloud:spring-cloud-gcp-starter-storage:4.8.2'
+	// Google Cloud Vision API 의존성 추가
+	//implementation 'com.google.cloud:google-cloud-vision:2.0.3'
+	implementation 'io.grpc:grpc-netty-shaded:1.58.0'
+	implementation 'com.google.api:gax-grpc:2.35.0'
+	//문자열 유사도 계산 알고리즘
+	implementation 'com.google.cloud:google-cloud-vision:3.0.1'
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	implementation 'org.json:json:20210307'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
