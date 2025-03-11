@@ -41,6 +41,13 @@ jobs:
       run: ./gradlew build
       shell: bash
 
+      
+    - name: Upload test reports
+      uses: actions/upload-artifact@v2
+      with:
+        name: test-reports
+        path: build/reports/tests/test/index.html
+
     - name: Make Zip File
       run: zip -qq -r ./github_pilly.zip .
       shell: bash
