@@ -1,0 +1,48 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+application.properties
+### IntelliJ IDEA ###
+.idea/
+
+
+/target/
+/build/
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+# Windows에서 생성되는 시스템 파일
+Thumbs.db
+
+# Gradle Wrapper와 관련된 디렉토리 제외
+gradle/
+
+# Gradle Wrapper 관련 파일들은 올려야 함
+gradlew
+gradlew.bat
