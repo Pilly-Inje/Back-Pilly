@@ -1,0 +1,72 @@
+name: Java CI with Gradle
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  PROJECT_NAME: pilly_project
+  BUCKET_NAME: forseni-bucket
+  CODE_DEPLOY_APP_NAME: forseni
+  DEPLOYMENT_GROUP_NAME: forseni_deploy
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    #created properties
+    - uses: actions/checkout@v4
+    - run: mkdir -p ./src/main/resources
+    - run: touch ./src/main/resources/application.properties
+    - run: echo "${{ secrets.APPLICATION }}" >> ./src/main/resources/application.properties
+    - run: cat ./src/main/resources/application.properties
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+      shell: bash
+
+    - name: Build with Gradle Wrapper
+      run: ./gradlew build
+      shell: bash
+
+    - name: Make Zip File
+      run: zip -qq -r ./github_pilly.zip .
+      shell: bash
+
+    - name: Check current directory
+      run: pwd
+    - name: List files in current directory
+      run: ls -l
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.SECRET_ACCESS_KEY }}
+        aws-region: ap-northeast-2
+
+    - name: Upload to S3
+      run: aws s3 cp --region ap-northeast-2 ./github_pilly.zip s3://$BUCKET_NAME/$PROJECT_NAME/github_pilly.zip
+
+    - name: Check if previous deployment is active
+      id: check_deployment
+      run: |
+        DEPLOYMENT_STATUS=$(aws deploy get-deployment --deployment-id d-1O6KR06CA --query 'deploymentInfo.status' --output text)
+        if [ "$DEPLOYMENT_STATUS" != "Succeeded" ] && [ "$DEPLOYMENT_STATUS" != "Failed" ]; then
+        echo "Previous deployment is still active. Exiting the deployment process."
+        exit 1
+        fi
+      shell: bash
+
+    - name: Create new deployment
+      run: aws deploy create-deployment --application-name $CODE_DEPLOY_APP_NAME --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name $DEPLOYMENT_GROUP_NAME --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/github_pilly.zip
+      if: steps.check_deployment.outcome == 'success'
