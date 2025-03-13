@@ -8,9 +8,9 @@ on:
 
 env:
   PROJECT_NAME: pilly_project
-  BUCKET_NAME: forseni-bucket
-  CODE_DEPLOY_APP_NAME: forseni
-  DEPLOYMENT_GROUP_NAME: forseni_deploy
+  BUCKET_NAME: pilly-bucket
+  CODE_DEPLOY_APP_NAME: pillyApp
+  DEPLOYMENT_GROUP_NAME: graduationWork_deploy
 
 jobs:
   build:
@@ -41,9 +41,8 @@ jobs:
       run: ./gradlew build
       shell: bash
 
-
     - name: Make Zip File
-      run: zip -qq -r ./github_pilly.zip .
+      run: zip -qq -r ./$GITHUB_SHA.zip .
       shell: bash
 
     - name: Check current directory
@@ -59,7 +58,7 @@ jobs:
         aws-region: ap-northeast-2
 
     - name: Upload to S3
-      run: aws s3 cp --region ap-northeast-2 ./github_pilly.zip s3://$BUCKET_NAME/$PROJECT_NAME/github_pilly.zip
+      run: aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.zip s3://$BUCKET_NAME/$PROJECT_NAME/$GITHUB_SHA.zip
 
     - name: Check if previous deployment is active
       id: check_deployment
@@ -72,5 +71,5 @@ jobs:
       shell: bash
 
     - name: Create new deployment
-      run: aws deploy create-deployment --application-name $CODE_DEPLOY_APP_NAME --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name $DEPLOYMENT_GROUP_NAME --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/github_pilly.zip
+      run: aws deploy create-deployment --application-name $CODE_DEPLOY_APP_NAME --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name $DEPLOYMENT_GROUP_NAME --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/$GITHUB_SHA.zip
       if: steps.check_deployment.outcome == 'success'
