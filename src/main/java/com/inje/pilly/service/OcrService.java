@@ -2,8 +2,7 @@ package com.inje.pilly.service;
 
 import com.google.cloud.vision.v1.*;
 import com.inje.pilly.repository.MedicineRepository;
-import lombok.RequiredArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -16,10 +15,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class OcrService {
-
     private final MedicineRepository medicineRepository;
+    @Autowired
+    public OcrService(MedicineRepository medicineRepository) {
+        this.medicineRepository = medicineRepository;
+    }
 
     // GCS URL로 OCR 텍스트 추출
     public List<String> extractTextFromImage(String gcsImageUrl) throws IOException{
@@ -62,9 +63,33 @@ public class OcrService {
 
     //문자열 유사도 계산
     private double calculateSimilarity(String ocrName, String dbName) {
-        int distance = StringUtils.getLevenshteinDistance(ocrName, dbName);
+        int distance = getLevenshteinDistance(ocrName, dbName);
         int maxLength = Math.max(ocrName.length(), dbName.length());
         return 1.0 - (double) distance / maxLength; // 유사도 계산
+    }
+    private int getLevenshteinDistance(String s1, String s2) {
+        int lenS1 = s1.length();
+        int lenS2 = s2.length();
+        int[][] dp = new int[lenS1 + 1][lenS2 + 1];
+
+        // 초기화
+        for (int i = 0; i <= lenS1; i++) {
+            dp[i][0] = i;
+        }
+        for (int j = 0; j <= lenS2; j++) {
+            dp[0][j] = j;
+        }
+
+        for (int i = 1; i <= lenS1; i++) {
+            for (int j = 1; j <= lenS2; j++) {
+                int cost = (s1.charAt(i - 1) == s2.charAt(j - 1)) ? 0 : 1;
+                dp[i][j] = Math.min(Math.min(dp[i - 1][j] + 1,
+                                dp[i][j - 1] + 1),
+                        dp[i - 1][j - 1] + cost);
+            }
+        }
+
+        return dp[lenS1][lenS2];
     }
 
     // 문자열의 유사도를 계산하여 80% 이상 일치하는 경우에만 필터링
