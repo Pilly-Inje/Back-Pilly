@@ -14,7 +14,6 @@ public interface PrescriptionRepository extends JpaRepository<Prescription,Long>
     //Optional<Prescription> findByPrescriptionIdAndUserId(Long prescriptionId, Long userId);
     @Query("SELECT p FROM Prescription p WHERE p.user.userId = :userId ORDER BY p.startDate DESC")
     List<Prescription> findByUserIdOrderByStartDateDesc(@Param("userId")Long userId);
-
     @Query("SELECT p FROM Prescription p WHERE p.user.userId = :userId AND p.startDate <= :today AND p.endDate >= :today")
     List<Prescription> findByUserIdAndDateRange(@Param("userId") Long userId, @Param("today") LocalDate today);
 }
