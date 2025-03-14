@@ -23,6 +23,10 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    # deploy.sh 접근 권한 주기
+    - name: Give execute permission to deploy.sh
+      run: chmod +x ./scripts/deploy.sh
+      
     #gradle 의존성 캐시
     - name: Cache Gradle dependencies
       uses: actions/cache@v3
