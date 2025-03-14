@@ -50,7 +50,11 @@ jobs:
     - name: Make Zip File
       run: zip -qq -r ./$GITHUB_SHA.zip .
       shell: bash
-
+        
+    - name: List files in deployment package
+      run: unzip -l ./$GITHUB_SHA.zip
+      shell: bash
+      
     - name: Check current directory
       run: pwd
     - name: List files in current directory
@@ -95,6 +99,3 @@ jobs:
           echo "Previous deployment is still active. Exiting the deployment process."
           exit 1
         fi
-        
-    - name: List files in deployment package
-      run: unzip -l ./$GITHUB_SHA.zip
