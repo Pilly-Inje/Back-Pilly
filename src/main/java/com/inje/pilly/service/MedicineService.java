@@ -26,13 +26,8 @@ import java.util.stream.Collectors;
 @Service
 
 public class MedicineService {
-    @Autowired
     private MedicineRepository medicineRepository;
-
-    @Autowired
     private PrescriptionRepository prescriptionRepository;
-
-    @Autowired
     private PrescriptionMedicineRepository prescriptionMedicineRepository;
 
     @Value("${MedicationApi.url}")
@@ -41,6 +36,12 @@ public class MedicineService {
     @Value("${MedicationKey.url}")
     private String API_KEY;
 
+    @Autowired
+    public MedicineService(MedicineRepository medicineRepository,PrescriptionRepository prescriptionRepository,PrescriptionMedicineRepository prescriptionMedicineRepository){
+        this.medicineRepository = medicineRepository;
+        this.prescriptionRepository = prescriptionRepository;
+        this.prescriptionMedicineRepository = prescriptionMedicineRepository;
+    }
     //  API에서 모든 약 데이터를 가져와 DB에 저장
     @Transactional
     public ResponseEntity<Map<String, Object>> loadAllMedicines() {
