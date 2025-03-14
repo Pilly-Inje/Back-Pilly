@@ -110,8 +110,8 @@ jobs:
       run: |
         echo "$EC2_SSH_KEY" > ec2_key.pem
         chmod 600 ec2_key.pem
-        scp -o StrictHostKeyChecking=no -i ec2_key.pem build/libs/pilly-0.0.1-SNAPSHOT.jar ec2-user@52.78.204.121:/home/ec2-user/
-        ssh -o StrictHostKeyChecking=no -i ec2_key.pem ec2-user@52-78-204-121 << EOF
+        scp -o StrictHostKeyChecking=no -i ec2_key.pem build/libs/pilly-0.0.1-SNAPSHOT.jar ec2-user@ec2-52-78-204-121.ap-northeast-2.compute.amazonaws.com
+        ssh -o StrictHostKeyChecking=no -i ec2_key.pem ec2-user@ec2-52-78-204-121.ap-northeast-2.compute.amazonaws.com << EOF
           sudo systemctl stop myapp.service
           sudo cp /home/ec2-user/pilly-0.0.1-SNAPSHOT.jar /opt/myapp/myapp.jar
           sudo systemctl start myapp.service
