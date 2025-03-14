@@ -12,9 +12,6 @@ permission:
 
 hooks:
   ApplicationStart:
-    - location: scripts/deploy.sh
+    - location: /home/ec2-user/pillyProject/scripts/deploy.sh
       timeout: 60
-      runas: ec2-user
-    - location: /bin/chmod
-      arguments: "+x /home/ec2-user/pillyProject/scripts/deploy.sh"
       runas: ec2-user
