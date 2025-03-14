@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -38,10 +37,14 @@ public class OcrService {
             BatchAnnotateImagesResponse response = vision.batchAnnotateImages(List.of(request));
             List<AnnotateImageResponse> responses = response.getResponsesList();
 
+            if (responses.isEmpty()) {
+                throw new RuntimeException("OCR 요청에 대한 응답이 없습니다.");
+            }
+
             StringBuilder extractedText = new StringBuilder();
             for (AnnotateImageResponse res : responses) {
                 if (res.hasError()) {
-                    return Collections.emptyList();
+                    throw new RuntimeException("OCR 처리 중 오류가 발생했습니다: " + res.getError().getMessage());
                 }
                 // 추출된 텍스트
                 extractedText.append(res.getTextAnnotationsList().get(0).getDescription());
