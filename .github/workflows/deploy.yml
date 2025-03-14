@@ -95,3 +95,6 @@ jobs:
           echo "Previous deployment is still active. Exiting the deployment process."
           exit 1
         fi
+        
+    - name: List files in deployment package
+      run: unzip -l ./$GITHUB_SHA.zip
