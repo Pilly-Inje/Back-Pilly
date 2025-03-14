@@ -3,7 +3,7 @@ os: linux
 files:
   - source: /
     destination: /home/ec2-user/pillyProject
-    overwrite: ture
+    overwrite: true
 permission:
   - object: /home/ec2-user/pillyProject/
     owner: ec2-user
