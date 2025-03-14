@@ -26,6 +26,7 @@ jobs:
     # deploy.sh 접근 권한 주기
     - name: Give execute permission to deploy.sh
       run: chmod +x ./scripts/deploy.sh
+      shell: bash
       
     #gradle 의존성 캐시
     - name: Cache Gradle dependencies
