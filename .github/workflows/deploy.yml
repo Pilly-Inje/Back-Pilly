@@ -41,10 +41,6 @@ jobs:
 
     - name: Create GCP Service Account JSON file
       run: echo "${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}" > ./src/main/resources/ocr-project.json
-
-    # deploy.sh 접근 권한 주기
-    - name: Give execute permission to deploy.sh
-      run: chmod +x ./scripts/deploy.sh
         
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
@@ -59,11 +55,6 @@ jobs:
       with:
         name: test-reports
         path: build/reports/tests/test/index.html
-
-    # + deploy.sh 파일
-    - name: Copy deploy.sh to the root directory
-      run: cp ./scripts/deploy.sh ./deploy.sh
-      shell: bash
     
     - name: Make Zip File
       run: zip -r ./$GITHUB_SHA.zip .
