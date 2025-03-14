@@ -9,8 +9,12 @@ permission:
     owner: ec2-user
     group: ec2-user
     mode: 755
+
 hooks:
   ApplicationStart:
     - location: scripts/deploy.sh
       timeout: 60
+      runas: ec2-user
+    - location: /bin/chmod
+      arguments: "+x /home/ec2-user/pillyProject/scripts/deploy.sh"
       runas: ec2-user
