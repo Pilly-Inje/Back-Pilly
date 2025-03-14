@@ -1,4 +1,3 @@
-#!/bin/bash
 
 REPOSITORY=/home/ec2-user/pillyProject
 cd $REPOSITORY
