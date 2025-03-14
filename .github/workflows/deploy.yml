@@ -95,21 +95,5 @@ jobs:
       shell: bash
 
     - name: Create new deployment
-      id: create_deployment
-      run: |
-        DEPLOYMENT_ID=$(aws deploy create-deployment \
-          --application-name $CODE_DEPLOY_APP_NAME \
-          --deployment-config-name CodeDeployDefault.OneAtATime \
-          --deployment-group-name $DEPLOYMENT_GROUP_NAME \
-          --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/$GITHUB_SHA.zip \
-          --query 'deploymentId' --output text)
-        echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_ENV
+      run: aws deploy create-deployment --application-name $CODE_DEPLOY_APP_NAME --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name $DEPLOYMENT_GROUP_NAME --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/$GITHUB_SHA.zip
       if: steps.check_deployment.outcome == 'success'
-
-    - name: Check deployment status
-      run: |
-        DEPLOYMENT_STATUS=$(aws deploy get-deployment --deployment-id ${{ env.deployment_id }} --query 'deploymentInfo.status' --output text)
-        if [ "$DEPLOYMENT_STATUS" != "Succeeded" ] && [ "$DEPLOYMENT_STATUS" != "Failed" ]; then
-          echo "Previous deployment is still active. Exiting the deployment process."
-          exit 1
-        fi
