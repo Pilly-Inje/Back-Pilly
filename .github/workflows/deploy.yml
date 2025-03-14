@@ -116,13 +116,13 @@ jobs:
         scp -o StrictHostKeyChecking=no -i ec2_key.pem build/libs/pilly-0.0.1-SNAPSHOT.jar ec2-user@ec2-52-78-204-121.ap-northeast-2.compute.amazonaws.com:/home/ec2-user/
     
         # EC2에서 명령어 실행 (sudo를 사용하여 권한을 부여)
-        ssh -o StrictHostKeyChecking=no -i ec2_key.pem ec2-user@ec2-52-78-204-121.ap-northeast-2.compute.amazonaws.com << EOF
+        ssh -o StrictHostKeyChecking=no -i ec2_key.pem ec2-user@ec2-52-78-204-121.ap-northeast-2.compute.amazonaws.com << 'EOF'
           # 디렉토리가 없다면 생성
           sudo mkdir -p /opt/myapp
   
            if ! sudo systemctl status myapp.service >/dev/null 2>&1; then
             echo "Creating myapp.service..."
-            sudo bash -c 'cat <<EOL > /etc/systemd/system/myapp.service
+            sudo bash -c 'cat > /etc/systemd/system/myapp.service' <<EOL
           [Unit]
           Description=My Spring Boot Application
           After=network.target
@@ -137,7 +137,7 @@ jobs:
     
           [Install]
           WantedBy=multi-user.target
-          EOL
+          EOL'
     
             sudo systemctl daemon-reload
           fi
