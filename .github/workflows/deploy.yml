@@ -57,9 +57,12 @@ jobs:
         path: build/reports/tests/test/index.html
 
     # + deploy.sh 파일
-    - name: Make Zip File
+    - name: Copy deploy.sh to the root directory
       run: cp ./scripts/deploy.sh ./deploy.sh
-           zip -r ./$GITHUB_SHA.zip .
+      shell: bash
+    
+    - name: Make Zip File
+      run: zip -r ./$GITHUB_SHA.zip .
       shell: bash
         
     - name: List files in deployment package
