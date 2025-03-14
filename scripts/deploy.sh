@@ -1,3 +1,6 @@
+#!/bin/bash
+
+chmod +x /home/ec2-user/pillyProject/scripts/deploy.sh
 
 REPOSITORY=/home/ec2-user/pillyProject
 cd $REPOSITORY
