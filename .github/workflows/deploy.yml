@@ -41,7 +41,11 @@ jobs:
 
     - name: Create GCP Service Account JSON file
       run: echo "${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}" > ./src/main/resources/ocr-project.json
-    
+
+    # deploy.sh 접근 권한 주기
+    - name: Give execute permission to deploy.sh
+      run: chmod +x ./scripts/deploy.sh
+        
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       shell: bash
