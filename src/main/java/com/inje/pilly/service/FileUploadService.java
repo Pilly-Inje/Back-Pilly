@@ -9,27 +9,31 @@ import com.inje.pilly.entity.Prescription;
 import com.inje.pilly.entity.User;
 import com.inje.pilly.repository.PrescriptionRepository;
 import com.inje.pilly.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class FileUploadService {
 
     @Value("${spring.cloud.gcp.storage.bucket}")
     private String bucketName;
 
-    private final PrescriptionRepository prescriptionRepository;
-    private final UserRepository userRepository;
-    private final OcrService ocrService;
+    private PrescriptionRepository prescriptionRepository;
+    private UserRepository userRepository;
+    private OcrService ocrService;
+
+    @Autowired
+    public FileUploadService(PrescriptionRepository prescriptionRepository,UserRepository userRepository, @Lazy OcrService ocrService){
+        this.prescriptionRepository = prescriptionRepository;
+        this.userRepository = userRepository;
+        this.ocrService = ocrService;
+    }
 
     // GCS에 파일 업로드
     public String uploadFile(MultipartFile file) throws IOException {

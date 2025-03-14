@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-
 public interface PrescriptionMedicineRepository extends JpaRepository<PrescriptionMedicine,Long> {
     @Query("SELECT pm FROM PrescriptionMedicine pm LEFT JOIN pm.medicine m WHERE pm.prescription.prescriptionId = :prescriptionId")
     List<PrescriptionMedicine> findByPrescriptionId(@Param("prescriptionId") Long prescriptionId);

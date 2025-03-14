@@ -25,17 +25,20 @@ import java.util.stream.Collectors;
 @Service
 
 public class PrescriptionService {
-    @Autowired
     private UserRepository userRepository;
-    @Autowired
     private PrescriptionRepository prescriptionRepository;
-    @Autowired
     private MedicineRepository medicineRepository;
-    @Autowired
     private PrescriptionMedicineRepository prescriptionMedicineRepository;
-    @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    public PrescriptionService(UserRepository userRepository,PrescriptionRepository prescriptionRepository,MedicineRepository medicineRepository,PrescriptionMedicineRepository prescriptionMedicineRepository,JdbcTemplate jdbcTemplate){
+        this.userRepository = userRepository;
+        this.prescriptionRepository = prescriptionRepository;
+        this.medicineRepository = medicineRepository;
+        this.prescriptionMedicineRepository = prescriptionMedicineRepository;
+        this.jdbcTemplate = jdbcTemplate;
+    }
     //처방전 저장 및 업데이트? 함
     public PrescriptionResponseDTO saveOrUpdatePrescription(PrescriptionRequestDTO prescriptionRequestDTO) {
 

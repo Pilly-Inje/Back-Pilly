@@ -17,6 +17,7 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 application.properties
+
 ### IntelliJ IDEA ###
 .idea/
 
@@ -39,3 +40,5 @@ out/
 # Windows에서 생성되는 시스템 파일
 Thumbs.db
 
+# Exclude OcrConfig.java from version control
+OcrConfig.java
