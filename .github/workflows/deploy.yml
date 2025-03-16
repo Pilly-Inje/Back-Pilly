@@ -1,5 +1,6 @@
 name: Java CI with Gradle
 
+#배포 트리거
 on:
   push:
     branches: [ "main" ]
@@ -23,11 +24,17 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # deploy.sh 접근 권한 주기
-    - name: Give execute permission to deploy.sh
-      run: chmod +x ./scripts/deploy.sh
-      shell: bash
-      
+    #created properties
+    - uses: actions/checkout@v4
+    - run: mkdir -p ./src/main/resources
+    - run: touch ./src/main/resources/application.properties
+    - run: echo "${{ secrets.APPLICATION }}" >> ./src/main/resources/application.properties
+    - run: touch ./src/main/resources/ocr-project.json
+    - run: echo "${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}" > ./src/main/resources/ocr-project.json
+    - run: cat ./src/main/resources/application.properties
+    
+    - run: cat ./src/main/resources/ocr-project.json
+
     #gradle 의존성 캐시
     - name: Cache Gradle dependencies
       uses: actions/cache@v3
@@ -37,16 +44,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-gradle-
    
-    #created properties
-    - uses: actions/checkout@v4
-    - run: mkdir -p ./src/main/resources
-    - run: touch ./src/main/resources/application.properties
-    - run: echo "${{ secrets.APPLICATION }}" >> ./src/main/resources/application.properties
-    - run: cat ./src/main/resources/application.properties
-
-    - name: Create GCP Service Account JSON file
-      run: echo "${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}" > ./src/main/resources/ocr-project.json
-        
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       shell: bash
@@ -83,66 +80,3 @@ jobs:
 
     - name: Upload to S3
       run: aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.zip s3://$BUCKET_NAME/$PROJECT_NAME/$GITHUB_SHA.zip
-
-
-    - name: Check if previous deployment is active
-      id: check_deployment
-      run: |
-        DEPLOYMENT_ID=$(aws deploy list-deployments --application-name $CODE_DEPLOY_APP_NAME --deployment-group-name $DEPLOYMENT_GROUP_NAME --query 'deployments[0]' --output text)
-        
-         DEPLOYMENT_STATUS=$(aws deploy get-deployment --deployment-id $DEPLOYMENT_ID --query 'deploymentInfo.status' --output text)
-        if [ "$DEPLOYMENT_STATUS" != "Succeeded" ] && [ "$DEPLOYMENT_STATUS" != "Failed" ]; then
-          echo "Previous deployment is still active. Exiting the deployment process."
-          exit 1
-        fi
-      shell: bash
-
-    - name: Create new deployment
-      run: |
-        # Create a new deployment and get the deployment ID
-        DEPLOYMENT_ID=$(aws deploy create-deployment --application-name $CODE_DEPLOY_APP_NAME --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name $DEPLOYMENT_GROUP_NAME --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/$GITHUB_SHA.zip --query 'deploymentId' --output text)
-        echo "Deployment created with ID: $DEPLOYMENT_ID"
-      if: steps.check_deployment.outcome == 'success'
-  
-    - name: Deploy to EC2
-      env:
-        EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-      run: |
-        # SSH 키 생성 및 권한 설정
-        echo "$EC2_SSH_KEY" > ec2_key.pem
-        chmod 600 ec2_key.pem
-
-        # EC2로 파일을 복사
-        scp -o StrictHostKeyChecking=no -i ec2_key.pem build/libs/pilly-0.0.1-SNAPSHOT.jar ec2-user@ec2-52-78-204-121.ap-northeast-2.compute.amazonaws.com:/home/ec2-user/
-    
-        # EC2에서 명령어 실행 (sudo를 사용하여 권한을 부여)
-        ssh -o StrictHostKeyChecking=no -i ec2_key.pem ec2-user@ec2-52-78-204-121.ap-northeast-2.compute.amazonaws.com << 'EOF'
-          # 디렉토리가 없다면 생성
-          sudo mkdir -p /opt/myapp
-  
-           if ! sudo systemctl status myapp.service >/dev/null 2>&1; then
-            echo "Creating myapp.service..."
-            sudo bash -c 'cat > /etc/systemd/system/myapp.service' <<EOL
-          [Unit]
-          Description=My Spring Boot Application
-          After=network.target
-
-          [Service]
-          User=ec2-user
-          ExecStart=/usr/bin/java -jar /opt/myapp/myapp.jar
-          SuccessExitStatus=143
-          Restart=on-failure
-          StandardOutput=journal
-          StandardError=journal
-    
-          [Install]
-          WantedBy=multi-user.target
-          EOL'
-    
-            sudo systemctl daemon-reload
-          fi
-
-          sudo systemctl stop myapp.service || true
-          sudo cp /home/ec2-user/pilly-0.0.1-SNAPSHOT.jar /opt/myapp/myapp.jar
-          sudo systemctl start myapp.service
-        EOF
