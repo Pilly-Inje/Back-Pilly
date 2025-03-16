@@ -32,8 +32,8 @@ jobs:
     - run: touch ./src/main/resources/ocr-project.json
     - run: echo "${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}" > ./src/main/resources/ocr-project.json
     - run: cat ./src/main/resources/application.properties
-    
     - run: cat ./src/main/resources/ocr-project.json
+    - run: ls -lah src/main/resources/
 
     #gradle 의존성 캐시
     - name: Cache Gradle dependencies
@@ -51,7 +51,9 @@ jobs:
     - name: Build with Gradle Wrapper
       run: ./gradlew build
       shell: bash
-      
+    
+    - run: ls -lah build/resources/main/
+    
     - name: Upload Test Reports
       uses: actions/upload-artifact@v4
       with:
