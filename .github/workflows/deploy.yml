@@ -30,7 +30,8 @@ jobs:
     - run: touch ./src/main/resources/application.properties
     - run: echo "${{ secrets.APPLICATION }}" >> ./src/main/resources/application.properties
     - run: touch ./src/main/resources/ocr-project.json
-    - run: echo "${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}" > ./src/main/resources/ocr-project.json
+    # ocr-project.json 파일 생성 (JSON 포맷 유지)
+    - run: printf '%s\n' "${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}" > ./src/main/resources/ocr-project.json
     - run: cat ./src/main/resources/application.properties
     - run: cat ./src/main/resources/ocr-project.json
     - run: ls -lah src/main/resources/
