@@ -1,9 +1,6 @@
 package com.inje.pilly.service;
 
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.*;
 import com.inje.pilly.dto.PrescriptionImgResponseDTO;
 import com.inje.pilly.entity.Prescription;
 import com.inje.pilly.entity.User;
@@ -41,12 +38,12 @@ public class FileUploadService {
 
         // GCS에 바로 파일 업로드
         Storage storage = StorageOptions.getDefaultInstance().getService();
-        BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, fileName).build();
+        BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, fileName).setContentType(file.getContentType()).build();
         Blob blob = storage.create(blobInfo, file.getBytes());  // GCS에 파일을 바로 업로드
 
         System.out.println("gcs 링크: "+blob.getMediaLink());
         // GCS URL 반환
-        return blob.getMediaLink();
+        return "https://storage.googleapis.com/" + bucketName + "/" + fileName;
     }
 
     public PrescriptionImgResponseDTO createPrescription(Long userId, MultipartFile  file) throws IOException {
