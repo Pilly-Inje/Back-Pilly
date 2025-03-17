@@ -23,6 +23,7 @@ public class OcrService {
 
     // GCS URL로 OCR 텍스트 추출
     public List<String> extractTextFromImage(String gcsImageUrl) throws IOException{
+        System.out.println("Received fileUrl: "+gcsImageUrl);
         String gcsUri = convertToGcsUri(gcsImageUrl);
         try(ImageAnnotatorClient vision = ImageAnnotatorClient.create()){
             ImageSource imageSource = ImageSource.newBuilder().setGcsImageUri(gcsUri).build();
@@ -55,14 +56,49 @@ public class OcrService {
     }
     // GCS URL로 변환시킴
     private String convertToGcsUri(String gcsImageUrl) {
-        // URL에서 버킷 이름과 파일 경로 추출
-        String[] urlParts = gcsImageUrl.split("/o/");
-        String bucketName = urlParts[0].split("/b/")[1];
-        String filePath = urlParts[1].split("\\?")[0]; // 쿼리 문자열 제거
+        // 로그 추가
+        System.out.println("Received GCS URL: " + gcsImageUrl);
+
+        // URL이 null이거나 비어 있는지 확인
+        if (gcsImageUrl == null || gcsImageUrl.isEmpty()) {
+            throw new IllegalArgumentException("Invalid GCS URL: URL is null or empty");
+        }
+
+        String bucketName;
+        String filePath;
+
+        if (gcsImageUrl.contains("/o/")) {
+            // 다운로드 URL 형식 처리 (https://storage.googleapis.com/download/storage/v1/b/{버킷명}/o/{파일명}?alt=media)
+            String[] urlParts = gcsImageUrl.split("/o/");
+            if (urlParts.length < 2) {
+                throw new IllegalArgumentException("Invalid GCS URL format: " + gcsImageUrl);
+            }
+
+            bucketName = urlParts[0].split("/b/")[1];
+            filePath = urlParts[1].split("\\?")[0]; // 쿼리 문자열 제거
+
+        } else if (gcsImageUrl.startsWith("https://storage.googleapis.com/")) {
+            // Public URL 형식 처리 (https://storage.googleapis.com/{버킷명}/{파일명})
+            String[] urlParts = gcsImageUrl.replace("https://storage.googleapis.com/", "").split("/", 2);
+            if (urlParts.length < 2) {
+                throw new IllegalArgumentException("Invalid GCS URL format: " + gcsImageUrl);
+            }
+
+            bucketName = urlParts[0]; // 첫 번째 부분이 버킷 이름
+            filePath = urlParts[1];   // 두 번째 부분이 파일 경로
+        } else {
+            throw new IllegalArgumentException("Unknown GCS URL format: " + gcsImageUrl);
+        }
 
         // gs:// 형식으로 변환
-        return "gs://" + bucketName + "/" + filePath;
+        String gcsUri = "gs://" + bucketName + "/" + filePath;
+
+        // 변환된 GCS URI 로그 추가
+        System.out.println("Converted GCS URI: " + gcsUri);
+
+        return gcsUri;
     }
+
 
     //문자열 유사도 계산
     private double calculateSimilarity(String ocrName, String dbName) {
