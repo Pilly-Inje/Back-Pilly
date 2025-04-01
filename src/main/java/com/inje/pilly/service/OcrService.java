@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @Service
 public class OcrService {
     private final MedicineRepository medicineRepository;
-    @Autowired
+
     public OcrService(MedicineRepository medicineRepository) {
         this.medicineRepository = medicineRepository;
     }
