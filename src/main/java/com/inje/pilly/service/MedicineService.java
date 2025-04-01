@@ -5,6 +5,12 @@ import com.inje.pilly.entity.Prescription;
 import com.inje.pilly.repository.MedicineRepository;
 import com.inje.pilly.repository.PrescriptionMedicineRepository;
 import com.inje.pilly.repository.PrescriptionRepository;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
+
+
 import jakarta.transaction.Transactional;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -17,6 +23,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -24,7 +34,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-
 public class MedicineService {
     private MedicineRepository medicineRepository;
     private PrescriptionRepository prescriptionRepository;
@@ -36,12 +45,24 @@ public class MedicineService {
     @Value("${MedicationKey.url}")
     private String API_KEY;
 
+    @Value("${cloud.aws.s3.bucket}")
+    private String bucket;
+
+    private final AmazonS3 amazonS3;
+
     @Autowired
-    public MedicineService(MedicineRepository medicineRepository,PrescriptionRepository prescriptionRepository,PrescriptionMedicineRepository prescriptionMedicineRepository){
+    public MedicineService(
+            MedicineRepository medicineRepository,
+            PrescriptionRepository prescriptionRepository,
+            PrescriptionMedicineRepository prescriptionMedicineRepository,
+            AmazonS3 amazonS3
+    ) {
         this.medicineRepository = medicineRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.prescriptionMedicineRepository = prescriptionMedicineRepository;
+        this.amazonS3 = amazonS3;
     }
+
     //  API에서 모든 약 데이터를 가져와 DB에 저장
     @Transactional
     public ResponseEntity<Map<String, Object>> loadAllMedicines() {
@@ -57,6 +78,105 @@ public class MedicineService {
                 "savedCount", savedCount
         ));
     }
+
+    // 원본 url 다시 저장
+    @Transactional
+    public ResponseEntity<Map<String, Object>> saveOnlyImageUrlsFromApi() {
+        JSONArray dataArray = fetchAllMedicineData();
+        List<Medicine> medicines = medicineRepository.findAll(); // 순서 보장되는 JPA 메서드
+        int updatedCount = 0;
+
+        int minLength = Math.min(dataArray.length(), medicines.size());
+
+        for (int i = 0; i < minLength; i++) {
+            JSONObject item = dataArray.optJSONObject(i);
+            if (item == null) continue;
+
+            String itemImage = item.optString("itemImage", "").trim();
+            if (itemImage.isEmpty()) continue;
+
+            Medicine medicine = medicines.get(i);
+            medicine.setOriginImageUrl(itemImage); // 순서대로 넣는다
+            medicineRepository.save(medicine);
+            updatedCount++;
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "이미지 URL 순서대로 업데이트 완료",
+                "updatedCount", updatedCount
+        ));
+    }
+
+
+    //url
+    //  이미지 다운로드 후 S3에 업로드
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updateMedicineImages() {
+        List<Medicine> medicines = medicineRepository.findAll();
+        int updatedCount = 0;
+
+        for (Medicine medicine : medicines) {
+            //  중복 업로드 방지
+            if (medicine.getMedicineImage() != null && !medicine.getMedicineImage().isBlank()) {
+                continue;
+            }
+
+            String imageUrl = medicine.getOriginImageUrl(); // 원본 이미지 URL 사용
+            if (imageUrl == null || imageUrl.isBlank()) continue;
+
+            try {
+                // 1. 이미지 URL에서 바이트 배열로 안전하게 읽기
+                URL url = new URL(imageUrl);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                try (InputStream is = url.openStream()) {
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    while ((bytesRead = is.read(buffer)) != -1) {
+                        baos.write(buffer, 0, bytesRead);
+                    }
+                }
+                byte[] imageBytes = baos.toByteArray();
+
+                // S3에 업로드할 메타데이터 설정
+                String filename = "medicine_images/" + UUID.randomUUID() + ".jpg";
+                ObjectMetadata metadata = new ObjectMetadata();
+                metadata.setContentType("image/jpeg");
+                metadata.setContentLength(imageBytes.length); // 정확한 길이 설정
+
+                // 업로드 요청 객체 생성
+                PutObjectRequest request = new PutObjectRequest(
+                        bucket,
+                        filename,
+                        new ByteArrayInputStream(imageBytes),
+                        metadata
+                );
+
+                // S3에 업로드
+                amazonS3.putObject(request);
+
+                // S3 공개 URL로 DB 업데이트
+                String publicUrl = amazonS3.getUrl(bucket, filename).toString();
+                medicine.setMedicineImage(publicUrl);
+                medicineRepository.save(medicine);
+                updatedCount++;
+
+            } catch (Exception e) {
+                System.out.println("이미지 업로드 실패: " + medicine.getMedicineName() + " → " + e.getMessage());
+            }
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "S3에 이미지 업로드 및 DB 업데이트 완료 (중복 방지)",
+                "updatedCount", updatedCount
+        ));
+    }
+
+
+
+
+
 
     //  모든 약 정보 조회 (캐시 쓴거임)
     @Cacheable(value = "allMedicines", key = "'allMedicines'")
@@ -81,8 +201,8 @@ public class MedicineService {
 //            medicineInfo.put("caution", medicine.getCaution());
 
             // 이미지가 null이 아니면 이미지도 추가
-            if (medicine.getMedicineImg() != null) {
-                medicineInfo.put("medicineImage", medicine.getMedicineImg());
+            if (medicine.getMedicineImage() != null) {
+                medicineInfo.put("medicineImage", medicine.getMedicineImage());
             }
             results.add(medicineInfo);
         }
@@ -110,7 +230,7 @@ public class MedicineService {
             medicineInfo.put("effect", medicine.getEffect());
             medicineInfo.put("dosage", medicine.getDosage());
             medicineInfo.put("caution", medicine.getCaution());
-            medicineInfo.put("medicineImage", medicine.getMedicineImg());
+            medicineInfo.put("medicineImage", medicine.getMedicineImage());
             results.add(medicineInfo);
         }
 
@@ -143,14 +263,12 @@ public class MedicineService {
                 continue;
             }
 
-            Medicine medicine = new Medicine(
-                    null, // medicineId는 자동 생성됨
-                    medicineName,
-                    item.optString("efcyQesitm", ""),  // 효과 (effect)
-                    item.optString("useMethodQesitm", ""),  // 복용 방법 (dosage)
-                    item.optString("atpnWarnQesitm", ""),  // 주의사항 (caution)
-                    item.optString("itemImage", "")  // 이미지 (medicineImg)
-            );
+            Medicine medicine = new Medicine();
+            medicine.setMedicineName(medicineName);
+            medicine.setEffect(item.optString("efcyQesitm", ""));
+            medicine.setDosage(item.optString("useMethodQesitm", ""));
+            medicine.setCaution(item.optString("atpnWarnQesitm", ""));
+            medicine.setOriginImageUrl(item.optString("itemImage", ""));
 
             System.out.println(" 저장할 약 정보: " + medicine.getMedicineName());
             medicineList.add(medicine);

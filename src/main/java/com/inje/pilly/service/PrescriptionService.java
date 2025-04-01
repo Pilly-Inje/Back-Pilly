@@ -186,7 +186,7 @@ public class PrescriptionService {
                     MedicineDTO medicineDTO = new MedicineDTO();
                     medicineDTO.setMedicineId(medicine.getMedicineId());
                     medicineDTO.setMedicineName(medicine.getMedicineName());
-                    medicineDTO.setMedicineImageUrl(medicine.getMedicineImg());
+                    medicineDTO.setMedicineImageUrl(medicine.getMedicineImage());
                     medicineDTOList.add(medicineDTO);
                 }
             }

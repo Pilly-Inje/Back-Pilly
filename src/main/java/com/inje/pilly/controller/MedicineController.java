@@ -28,11 +28,18 @@ public class MedicineController {
     public ResponseEntity<Map<String, Object>> getAllMedicines() {
         return medicineService.getAllMedicines();
     }
+
     @Operation(summary = "특정 약 검색", description = "특정 약에 대한 상세 정보")
     @GetMapping("/search/{medicineName}")
     public ResponseEntity<Map<String, Object>> getMedicineDetail(@PathVariable String medicineName) {
         return medicineService.searchMedicineDetail(medicineName);
     }
+
+    @GetMapping("/update-origin-image-urls")
+    public ResponseEntity<?> updateOriginImageUrls() {
+        return medicineService.saveOnlyImageUrlsFromApi();
+    }
+
 //    @Operation(summary = "사용 X")
 //    @GetMapping("/{medicineName}") //사용자 약 검색
 //    public ResponseEntity<Map<String, Object>> searchMedicineDetail(@PathVariable String medicineName){

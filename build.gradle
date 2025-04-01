@@ -24,6 +24,7 @@ repositories {
 	mavenCentral()
 }
 
+
 sourceSets {
 	main {
 		resources {
@@ -63,16 +64,26 @@ dependencies {
 	//문자열 유사도 계산 알고리즘
 //	implementation 'com.google.cloud:google-cloud-vision:3.0.1'
 
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.656'
+
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'org.json:json:20210307'
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2'	//Swagger
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
 
 //tasks.named('test') {
 //	useJUnitPlatform()
@@ -80,4 +91,5 @@ dependencies {
 //tasks.withType(JavaCompile) {
 //	options.compilerArgs << "-Xlint:deprecation"
 //}
+
 
