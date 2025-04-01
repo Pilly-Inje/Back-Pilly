@@ -30,9 +30,9 @@ public class MedicineController {
     }
 
     @Operation(summary = "특정 약 검색", description = "특정 약에 대한 상세 정보")
-    @GetMapping("/search/{medicineName}")
-    public ResponseEntity<Map<String, Object>> getMedicineDetail(@PathVariable String medicineName) {
-        return medicineService.searchMedicineDetail(medicineName);
+    @GetMapping("/search/{medicineId}")
+    public ResponseEntity<Map<String, Object>> getMedicineDetail(@PathVariable Long medicineId) {
+        return medicineService.searchMedicineDetail(medicineId);
     }
 
     @GetMapping("/update-origin-image-urls")
