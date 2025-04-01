@@ -3,16 +3,15 @@ package com.inje.pilly.service;
 import com.inje.pilly.dto.*;
 import com.inje.pilly.entity.Medicine;
 import com.inje.pilly.entity.Prescription;
+import com.inje.pilly.entity.HealthData;
 import com.inje.pilly.entity.PrescriptionMedicine;
 import com.inje.pilly.entity.User;
-import com.inje.pilly.repository.MedicineRepository;
-import com.inje.pilly.repository.PrescriptionMedicineRepository;
-import com.inje.pilly.repository.PrescriptionRepository;
-import com.inje.pilly.repository.UserRepository;
+import com.inje.pilly.repository.*;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -25,19 +24,22 @@ import java.util.stream.Collectors;
 @Service
 
 public class PrescriptionService {
-    private UserRepository userRepository;
-    private PrescriptionRepository prescriptionRepository;
-    private MedicineRepository medicineRepository;
-    private PrescriptionMedicineRepository prescriptionMedicineRepository;
-    private JdbcTemplate jdbcTemplate;
+    private final UserRepository userRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final MedicineRepository medicineRepository;
+    private final PrescriptionMedicineRepository prescriptionMedicineRepository;
+    private final HealthDataRepository healthDataRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final WebClient webClient;
 
-    @Autowired
-    public PrescriptionService(UserRepository userRepository,PrescriptionRepository prescriptionRepository,MedicineRepository medicineRepository,PrescriptionMedicineRepository prescriptionMedicineRepository,JdbcTemplate jdbcTemplate){
+    public PrescriptionService(UserRepository userRepository,PrescriptionRepository prescriptionRepository,MedicineRepository medicineRepository,PrescriptionMedicineRepository prescriptionMedicineRepository,HealthDataRepository healthDataRepository,JdbcTemplate jdbcTemplate,WebClient webClient){
         this.userRepository = userRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.medicineRepository = medicineRepository;
         this.prescriptionMedicineRepository = prescriptionMedicineRepository;
+        this.healthDataRepository = healthDataRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.webClient = webClient;
     }
     //처방전 저장 및 업데이트? 함
     public PrescriptionResponseDTO saveOrUpdatePrescription(PrescriptionRequestDTO prescriptionRequestDTO) {
@@ -84,7 +86,58 @@ public class PrescriptionService {
 
         updatePrescriptionMedicines(savedPrescription, medicineNames);
 
-        return new PrescriptionResponseDTO(savedPrescription.getPrescriptionId(), "처방전 저장 완료");
+        // 약 저장 및 예측 처리
+        List<Medicine> medicines = new ArrayList<>();
+        List<String> feedbackMessages = new ArrayList<>();
+
+        HealthData health = healthDataRepository.findTopByUser_UserIdOrderByRecordDateDesc(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 건강 정보가 없습니다."));
+        int moodEncoded = switch (health.getMood()) {
+            case "좋음" -> 2;
+            case "보통" -> 1;
+            default -> 0;
+        };
+
+        for (String medicineName : medicineNames) {
+            Medicine medicine = medicineRepository.findByMedicineName(medicineName)
+                    .orElseGet(() -> {
+                        Medicine newMedicine = new Medicine();
+                        newMedicine.setMedicineName(medicineName);
+                        return medicineRepository.save(newMedicine);
+                    });
+
+            PrescriptionMedicine prescriptionMedicine = new PrescriptionMedicine();
+            prescriptionMedicine.setPrescription(prescription);
+            prescriptionMedicine.setMedicine(medicine);
+            prescriptionMedicineRepository.save(prescriptionMedicine);
+
+            // 부작용 예측
+            SideEffectPredictRequestDTO request = new SideEffectPredictRequestDTO(
+                    userId,
+                    medicine.getMedicineId(),
+                    health.getFatigueLevel(),
+                    health.getDizzinessLevel(),
+                    moodEncoded,
+                    health.getSleepHours()
+            );
+
+            try {
+                SideEffectPredictResponseDTO response = webClient.post()
+                        .uri("/predict-side-effect")
+                        .bodyValue(request)
+                        .retrieve()
+                        .bodyToMono(SideEffectPredictResponseDTO.class)
+                        .block();
+
+                if (response != null && response.getFeedback() != null) {
+                    feedbackMessages.add(medicineName + " : " + response.getFeedback());
+                }
+            } catch (Exception e) {
+                feedbackMessages.add(medicineName + " 예측 실패");
+            }
+        }
+
+        return new PrescriptionResponseDTO(savedPrescription.getPrescriptionId(), "처방전 저장 완료", feedbackMessages);
     }
 
     private boolean isValidTime(String time) {
