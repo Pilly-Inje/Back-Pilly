@@ -1,7 +1,11 @@
 package com.inje.pilly.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inje.pilly.entity.Medicine;
+import com.inje.pilly.entity.MedicineEffectiveness;
 import com.inje.pilly.entity.Prescription;
+import com.inje.pilly.repository.MedicineEffectivenessRepository;
 import com.inje.pilly.repository.MedicineRepository;
 import com.inje.pilly.repository.PrescriptionMedicineRepository;
 import com.inje.pilly.repository.PrescriptionRepository;
@@ -38,6 +42,7 @@ public class MedicineService {
     private MedicineRepository medicineRepository;
     private PrescriptionRepository prescriptionRepository;
     private PrescriptionMedicineRepository prescriptionMedicineRepository;
+    private MedicineEffectivenessRepository medicineEffectivenessRepository;
 
     @Value("${MedicationApi.url}")
     private String API_URL;
@@ -50,17 +55,18 @@ public class MedicineService {
 
     private final AmazonS3 amazonS3;
 
-    @Autowired
     public MedicineService(
             MedicineRepository medicineRepository,
             PrescriptionRepository prescriptionRepository,
             PrescriptionMedicineRepository prescriptionMedicineRepository,
-            AmazonS3 amazonS3
+            AmazonS3 amazonS3,
+            MedicineEffectivenessRepository medicineEffectivenessRepository
     ) {
         this.medicineRepository = medicineRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.prescriptionMedicineRepository = prescriptionMedicineRepository;
         this.amazonS3 = amazonS3;
+        this.medicineEffectivenessRepository = medicineEffectivenessRepository;
     }
 
     //  API에서 모든 약 데이터를 가져와 DB에 저장
@@ -211,33 +217,59 @@ public class MedicineService {
     }
 
     //특정 약 상세 정보 조회
-    public ResponseEntity<Map<String, Object>> searchMedicineDetail(String medicineName) {
-        List<Medicine> medicines = medicineRepository.findByMedicineNameContainingIgnoreCase(medicineName);
+    public ResponseEntity<Map<String, Object>> searchMedicineDetail(Long medicineId) {
+        Optional<Medicine> medicines = medicineRepository.findByMedicineId(medicineId);
 
         if (medicines.isEmpty()) {
             return ResponseEntity.ok(Map.of(
                     "success", false,
-                    "message", "해당 이름을 포함하는 약물이 없습니다.",
-                    "data", Collections.emptyList()
+                    "message", "해당 ID의 약물이 존재하지 않습니다.",
+                    "data", null
             ));
         }
 
-        List<Map<String, Object>> results = new LinkedList<>();
-        for (Medicine medicine : medicines) {
-            Map<String, Object> medicineInfo = new LinkedHashMap<>();
-            medicineInfo.put("medicineId", medicine.getMedicineId());
-            medicineInfo.put("medicineName", medicine.getMedicineName());
-            medicineInfo.put("effect", medicine.getEffect());
-            medicineInfo.put("dosage", medicine.getDosage());
-            medicineInfo.put("caution", medicine.getCaution());
-            medicineInfo.put("medicineImage", medicine.getMedicineImage());
-            results.add(medicineInfo);
+        Medicine medicine = medicines.get();
+
+        Map<String, Object> medicineInfo = new LinkedHashMap<>();
+        medicineInfo.put("medicineId", medicine.getMedicineId());
+        medicineInfo.put("medicineName", medicine.getMedicineName());
+        medicineInfo.put("effect", medicine.getEffect());
+        medicineInfo.put("dosage", medicine.getDosage());
+        medicineInfo.put("caution", medicine.getCaution());
+        medicineInfo.put("medicineImage", medicine.getMedicineImage());
+
+        // 부작용 히스토리 조회
+        List<MedicineEffectiveness> effects = medicineEffectivenessRepository.findAllByMedicine_MedicineId(medicineId)
+                .stream()
+                .filter(MedicineEffectiveness::isSideEffectOccurred)
+                .sorted(Comparator.comparing(MedicineEffectiveness::getRecordDate).reversed())
+                .toList();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<Map<String, Object>> effectList = new ArrayList<>();
+
+        for (MedicineEffectiveness e : effects) {
+            Map<String, Object> effectMap = new HashMap<>();
+            effectMap.put("userId", e.getUser().getUserId());
+            effectMap.put("recordDate", e.getRecordDate());
+            effectMap.put("effectLevel", e.getEffectLevel());
+            effectMap.put("sideEffectOccurred", true);
+            try {
+                List<String> parsedEffects = objectMapper.readValue(e.getSideEffects(), new TypeReference<>() {});
+                effectMap.put("sideEffects", parsedEffects);
+            } catch (Exception ex) {
+                effectMap.put("sideEffects", List.of());
+            }
+            effectMap.put("comments", e.getComments());
+            effectList.add(effectMap);
         }
+
+        medicineInfo.put("sideEffectHistory", effectList);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "약 목록 조회 성공",
-                "data", results
+                "message", "약 정보 조회 성공",
+                "data", medicineInfo
         ));
     }
 
