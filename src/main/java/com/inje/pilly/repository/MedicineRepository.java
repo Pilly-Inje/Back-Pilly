@@ -15,5 +15,7 @@ public interface MedicineRepository extends JpaRepository<Medicine,Long> {
     //@Query("SELECT m.medicineId FROM Medicine m")
     Optional<Medicine> findByMedicineId(Long medicineId);
 
-    List<Medicine> findByMedicineNameContainingIgnoreCase(String medicineName);
+    // MedicineRepository.java
+    List<Medicine> findByMedicineNameIn(List<String> names);
+
 }
