@@ -47,4 +47,21 @@ public interface MedicineEffectivenessRepository extends JpaRepository<MedicineE
             @Param("mood") String mood,
             @Param("sleepHours") float sleepHours
     );
+    @Query(value = """
+    SELECT 
+        me.user_id AS userId,
+        me.medicine_id AS medicineId,
+        h.fatigue_level AS fatigueLevel,
+        h.dizziness_level AS dizzinessLevel,
+        h.mood AS mood,
+        h.sleep_hours AS sleepHours,
+        me.side_effect_occurred AS sideEffectOccurred,
+        me.side_effects AS sideEffects,
+        me.record_date AS recordDate
+    FROM medicine_effectiveness me
+    JOIN health_data h ON me.user_id = h.user_id
+    AND DATE(h.record_date) = DATE(me.record_date)
+    WHERE me.side_effect_occurred = true
+""", nativeQuery = true)
+    List<Object[]> findTrainableSideEffectDataRaw();
 }
