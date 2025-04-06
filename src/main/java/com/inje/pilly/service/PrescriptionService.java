@@ -8,7 +8,6 @@ import com.inje.pilly.entity.PrescriptionMedicine;
 import com.inje.pilly.entity.User;
 import com.inje.pilly.repository.*;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -16,9 +15,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -50,6 +47,15 @@ public class PrescriptionService {
 
         Long prescriptionId = prescriptionRequestDTO.getPrescriptionId();
         List<String> medicineNames = prescriptionRequestDTO.getMedicineNames();
+        List<Medicine> medicines = medicineRepository.findByMedicineNameIn(medicineNames);
+
+        List<MedicinePredictionInput> inputList = medicines.stream()
+                .map(m -> new MedicinePredictionInput(m.getMedicineId(), m.getMedicineName()))
+                .toList();
+
+        System.out.println("전달된 약 목록: " + medicineNames);
+
+        List<String> feedbackMessages = new ArrayList<>();
         Prescription prescription;
 
         if (prescriptionId != null) {
@@ -81,62 +87,54 @@ public class PrescriptionService {
 
         }
         prescription.setUser(user);
-
         Prescription savedPrescription = prescriptionRepository.save(prescription);
-
         updatePrescriptionMedicines(savedPrescription, medicineNames);
 
-        // 약 저장 및 예측 처리
-        List<Medicine> medicines = new ArrayList<>();
-        List<String> feedbackMessages = new ArrayList<>();
-
-        HealthData health = healthDataRepository.findTopByUser_UserIdOrderByRecordDateDesc(userId)
+        // 사용자 최신 건강 상태 조회
+        HealthData latestHealth = healthDataRepository.findTopByUser_UserIdOrderByRecordDateDesc(userId)
                 .orElseThrow(() -> new RuntimeException("사용자 건강 정보가 없습니다."));
-        int moodEncoded = switch (health.getMood()) {
-            case "좋음" -> 2;
+
+        int moodEncoded = switch (latestHealth.getMood()) {
+            case "나쁨" -> 0;
             case "보통" -> 1;
-            default -> 0;
+            case "좋음" -> 2;
+            default -> 1;
         };
+        System.out.println("사용자 최신 건강 상태: " + latestHealth);
 
-        for (String medicineName : medicineNames) {
-            Medicine medicine = medicineRepository.findByMedicineName(medicineName)
-                    .orElseGet(() -> {
-                        Medicine newMedicine = new Medicine();
-                        newMedicine.setMedicineName(medicineName);
-                        return medicineRepository.save(newMedicine);
-                    });
+        List<SideEffectPredictRequestDTO> requestList = inputList.stream()
+                .map(input -> new SideEffectPredictRequestDTO(
+                        userId,
+                        input.getMedicineId(),
+                        input.getMedicineName(),
+                        latestHealth.getFatigueLevel(),
+                        latestHealth.getDizzinessLevel(),
+                        moodEncoded,
+                        latestHealth.getSleepHours()
+                )).toList();
 
-            PrescriptionMedicine prescriptionMedicine = new PrescriptionMedicine();
-            prescriptionMedicine.setPrescription(prescription);
-            prescriptionMedicine.setMedicine(medicine);
-            prescriptionMedicineRepository.save(prescriptionMedicine);
+        SideEffectBatchPredictRequestDTO request = new SideEffectBatchPredictRequestDTO(requestList);
 
-            // 부작용 예측
-            SideEffectPredictRequestDTO request = new SideEffectPredictRequestDTO(
-                    userId,
-                    medicine.getMedicineId(),
-                    health.getFatigueLevel(),
-                    health.getDizzinessLevel(),
-                    moodEncoded,
-                    health.getSleepHours()
-            );
+        try {
+            SideEffectBatchPredictResponseDTO responses = webClient.post()
+                    .uri("http://localhost:8000/predict-side-effect")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(SideEffectBatchPredictResponseDTO.class)
+                    .block();
 
-            try {
-                SideEffectPredictResponseDTO response = webClient.post()
-                        .uri("/predict-side-effect")
-                        .bodyValue(request)
-                        .retrieve()
-                        .bodyToMono(SideEffectPredictResponseDTO.class)
-                        .block();
-
-                if (response != null && response.getFeedback() != null) {
-                    feedbackMessages.add(medicineName + " : " + response.getFeedback());
+            if (responses != null && responses.getResult() != null) {
+                for (SideEffectPredictResponseDTO result : responses.getResult()) {
+                    if (result.getFeedback() != null && !result.getFeedback().isBlank()) {
+                        feedbackMessages.add(result.getFeedback());
+                    }
                 }
-            } catch (Exception e) {
-                feedbackMessages.add(medicineName + " 예측 실패");
             }
-        }
 
+
+        } catch (Exception e) {
+            System.out.println("부작용 예측 실패 (배치): " + e.getMessage());
+        }
         return new PrescriptionResponseDTO(savedPrescription.getPrescriptionId(), "처방전 저장 완료", feedbackMessages);
     }
 
