@@ -40,6 +40,7 @@ public class MedicineEffectivenessService {
         Medicine medicine = medicineRepository.findById(dto.getMedicineId())
                 .orElseThrow(() -> new IllegalArgumentException("약 정보를 찾을 수 없습니다."));
 
+        //부작용 정보 저장
         MedicineEffectiveness entity = new MedicineEffectiveness();
         entity.setUser(user);
         entity.setMedicine(medicine);
@@ -49,9 +50,14 @@ public class MedicineEffectivenessService {
         entity.setComments(dto.getComments());
 
         String sideEffectsJson = objectMapper.writeValueAsString(dto.getSideEffects());
+        System.out.println("📦 저장되는 부작용 JSON: " + sideEffectsJson);
         entity.setSideEffects(sideEffectsJson);
 
         MedicineEffectiveness saved = medicineEffectivenessRepository.save(entity);
+
+        //학습 요청 트리거
+        trainService.trainModelWithAllData();
+
 
         //응답
         MedicineEffectivenessResponseDTO response = new MedicineEffectivenessResponseDTO();
