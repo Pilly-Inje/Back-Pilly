@@ -68,7 +68,7 @@ public class SideEffectTrainService {
             payload.put("data", deduplicated);
             System.out.println("data: "+payload);
             String response = webClient.post()
-                    .uri("http://localhost:8000/train-side-effect")
+                    .uri("http://13.209.139.80:8000/train-side-effect")
                     .bodyValue(payload)
                     .retrieve()
                     .bodyToMono(String.class)

@@ -50,7 +50,7 @@ public class MedicineEffectivenessService {
         entity.setComments(dto.getComments());
 
         String sideEffectsJson = objectMapper.writeValueAsString(dto.getSideEffects());
-        System.out.println("📦 저장되는 부작용 JSON: " + sideEffectsJson);
+        System.out.println("저장되는 부작용 JSON: " + sideEffectsJson);
         entity.setSideEffects(sideEffectsJson);
 
         MedicineEffectiveness saved = medicineEffectivenessRepository.save(entity);

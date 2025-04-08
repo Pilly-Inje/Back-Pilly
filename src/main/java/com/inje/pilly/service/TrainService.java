@@ -23,7 +23,7 @@ public class TrainService {
 
         try {
             webClient.post()
-                    .uri("http://localhost:8000/train")
+                    .uri("http://13.209.139.80:8000/train")
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(Void.class)

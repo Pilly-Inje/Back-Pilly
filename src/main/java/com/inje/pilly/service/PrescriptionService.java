@@ -117,7 +117,7 @@ public class PrescriptionService {
 
         try {
             SideEffectBatchPredictResponseDTO responses = webClient.post()
-                    .uri("http://localhost:8000/predict-side-effect")
+                    .uri("http://13.209.139.80:8000/predict-side-effect")
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(SideEffectBatchPredictResponseDTO.class)
