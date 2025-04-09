@@ -3,41 +3,41 @@ package com.inje.pilly.service;
 import com.inje.pilly.dto.*;
 import com.inje.pilly.entity.Medicine;
 import com.inje.pilly.entity.Prescription;
+import com.inje.pilly.entity.HealthData;
 import com.inje.pilly.entity.PrescriptionMedicine;
 import com.inje.pilly.entity.User;
-import com.inje.pilly.repository.MedicineRepository;
-import com.inje.pilly.repository.PrescriptionMedicineRepository;
-import com.inje.pilly.repository.PrescriptionRepository;
-import com.inje.pilly.repository.UserRepository;
+import com.inje.pilly.repository.*;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 
 public class PrescriptionService {
-    private UserRepository userRepository;
-    private PrescriptionRepository prescriptionRepository;
-    private MedicineRepository medicineRepository;
-    private PrescriptionMedicineRepository prescriptionMedicineRepository;
-    private JdbcTemplate jdbcTemplate;
+    private final UserRepository userRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final MedicineRepository medicineRepository;
+    private final PrescriptionMedicineRepository prescriptionMedicineRepository;
+    private final HealthDataRepository healthDataRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final WebClient webClient;
 
-    @Autowired
-    public PrescriptionService(UserRepository userRepository,PrescriptionRepository prescriptionRepository,MedicineRepository medicineRepository,PrescriptionMedicineRepository prescriptionMedicineRepository,JdbcTemplate jdbcTemplate){
+    public PrescriptionService(UserRepository userRepository,PrescriptionRepository prescriptionRepository,MedicineRepository medicineRepository,PrescriptionMedicineRepository prescriptionMedicineRepository,HealthDataRepository healthDataRepository,JdbcTemplate jdbcTemplate,WebClient webClient){
         this.userRepository = userRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.medicineRepository = medicineRepository;
         this.prescriptionMedicineRepository = prescriptionMedicineRepository;
+        this.healthDataRepository = healthDataRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.webClient = webClient;
     }
     //처방전 저장 및 업데이트? 함
     public PrescriptionResponseDTO saveOrUpdatePrescription(PrescriptionRequestDTO prescriptionRequestDTO) {
@@ -48,6 +48,15 @@ public class PrescriptionService {
 
         Long prescriptionId = prescriptionRequestDTO.getPrescriptionId();
         List<String> medicineNames = prescriptionRequestDTO.getMedicineNames();
+        List<Medicine> medicines = medicineRepository.findByMedicineNameIn(medicineNames);
+
+        List<MedicinePredictionInput> inputList = medicines.stream()
+                .map(m -> new MedicinePredictionInput(m.getMedicineId(), m.getMedicineName()))
+                .toList();
+
+        System.out.println("전달된 약 목록: " + medicineNames);
+
+        List<String> feedbackMessages = new ArrayList<>();
         Prescription prescription;
 
         if (prescriptionId != null) {
@@ -79,12 +88,57 @@ public class PrescriptionService {
 
         }
         prescription.setUser(user);
-
         Prescription savedPrescription = prescriptionRepository.save(prescription);
-
         updatePrescriptionMedicines(savedPrescription, medicineNames);
 
-        return new PrescriptionResponseDTO(savedPrescription.getPrescriptionId(), "처방전 저장 완료");
+        // 사용자 최신 건강 상태 조회
+        HealthData latestHealth = healthDataRepository.findTopByUser_UserIdOrderByRecordDateDesc(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 건강 정보가 없습니다."));
+
+        int moodEncoded = switch (latestHealth.getMood()) {
+            case "나쁨" -> 0;
+            case "보통" -> 1;
+            case "좋음" -> 2;
+            default -> 1;
+        };
+        System.out.println("사용자 최신 건강 상태: " + latestHealth);
+
+        List<SideEffectPredictRequestDTO> requestList = inputList.stream()
+                .map(input -> new SideEffectPredictRequestDTO(
+                        userId,
+                        input.getMedicineId(),
+                        input.getMedicineName(),
+                        latestHealth.getFatigueLevel(),
+                        latestHealth.getDizzinessLevel(),
+                        moodEncoded,
+                        latestHealth.getSleepHours()
+                )).toList();
+
+        SideEffectBatchPredictRequestDTO request = new SideEffectBatchPredictRequestDTO(requestList);
+
+        try {
+            SideEffectBatchPredictResponseDTO responses = webClient.post()
+                    .uri("/predict-side-effect")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(SideEffectBatchPredictResponseDTO.class)
+                    .block();
+
+            if (responses != null && responses.getResult() != null) {
+                for (SideEffectPredictResponseDTO result : responses.getResult()) {
+                    if (result.getFeedback() != null && !result.getFeedback().isBlank()) {
+                        feedbackMessages.add(result.getFeedback());
+                    }
+                }
+            }
+
+
+        } catch (WebClientResponseException e) {
+            System.err.println("예측 실패 (webclient 오류): " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+        } catch (Exception e) {
+            System.err.println("예측 실패 (기타 오류): " + e.getMessage());
+        }
+        return new PrescriptionResponseDTO(savedPrescription.getPrescriptionId(), "처방전 저장 완료", feedbackMessages);
     }
 
     private boolean isValidTime(String time) {

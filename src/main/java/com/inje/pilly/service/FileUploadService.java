@@ -21,11 +21,10 @@ public class FileUploadService {
     @Value("${spring.cloud.gcp.storage.bucket}")
     private String bucketName;
 
-    private PrescriptionRepository prescriptionRepository;
-    private UserRepository userRepository;
-    private OcrService ocrService;
+    private final PrescriptionRepository prescriptionRepository;
+    private final UserRepository userRepository;
+    private final OcrService ocrService;
 
-    @Autowired
     public FileUploadService(PrescriptionRepository prescriptionRepository,UserRepository userRepository, @Lazy OcrService ocrService){
         this.prescriptionRepository = prescriptionRepository;
         this.userRepository = userRepository;
