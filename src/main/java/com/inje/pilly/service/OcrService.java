@@ -1,8 +1,11 @@
 package com.inje.pilly.service;
 
+import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vision.v1.*;
 import com.inje.pilly.repository.MedicineRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -25,7 +28,15 @@ public class OcrService {
     public List<String> extractTextFromImage(String gcsImageUrl) throws IOException{
         System.out.println("Received fileUrl: "+gcsImageUrl);
         String gcsUri = convertToGcsUri(gcsImageUrl);
-        try(ImageAnnotatorClient vision = ImageAnnotatorClient.create()){
+
+        ClassPathResource resource = new ClassPathResource("ocr-project.json");
+
+        GoogleCredentials credentials = GoogleCredentials.fromStream(resource.getInputStream());
+        ImageAnnotatorSettings settings = ImageAnnotatorSettings.newBuilder()
+                .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
+                .build();
+
+        try(ImageAnnotatorClient vision = ImageAnnotatorClient.create(settings)){
             ImageSource imageSource = ImageSource.newBuilder().setGcsImageUri(gcsUri).build();
             Image image = Image.newBuilder().setSource(imageSource).build();
 
