@@ -29,16 +29,25 @@ public class HealthPredictService {
 
             PredictHealthDataRequestDTO request = new PredictHealthDataRequestDTO(userId, records);
 
-            return webClient.post()
+            HealthDataPredictResultDTO response = webClient.post()
                     .uri("/predict")
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(HealthDataPredictResultDTO.class)
-                    .block()
-                    .getPredictedFatigue();
+                    .block();
+
+            if (response == null) {
+                System.err.println("FastAPI 응답이 null입니다.");
+                return 0;
+            }
+
+            return response.getPredictedFatigue();
 
         } catch (WebClientResponseException e) {
-            System.err.println("예측 실패: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            System.err.println("예측 실패 (webclient 오류): " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            return 0;
+        } catch (Exception e) {
+            System.err.println("예측 실패 (기타 오류): " + e.getMessage());
             return 0;
         }
     }

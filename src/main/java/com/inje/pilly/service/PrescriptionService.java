@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -117,7 +118,7 @@ public class PrescriptionService {
 
         try {
             SideEffectBatchPredictResponseDTO responses = webClient.post()
-                    .uri("http://13.209.139.80:8000/predict-side-effect")
+                    .uri("/predict-side-effect")
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(SideEffectBatchPredictResponseDTO.class)
@@ -132,8 +133,10 @@ public class PrescriptionService {
             }
 
 
+        } catch (WebClientResponseException e) {
+            System.err.println("예측 실패 (webclient 오류): " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
         } catch (Exception e) {
-            System.out.println("부작용 예측 실패 (배치): " + e.getMessage());
+            System.err.println("예측 실패 (기타 오류): " + e.getMessage());
         }
         return new PrescriptionResponseDTO(savedPrescription.getPrescriptionId(), "처방전 저장 완료", feedbackMessages);
     }

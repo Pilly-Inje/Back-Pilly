@@ -179,11 +179,6 @@ public class MedicineService {
         ));
     }
 
-
-
-
-
-
     //  모든 약 정보 조회 (캐시 쓴거임)
     @Cacheable(value = "allMedicines", key = "'allMedicines'")
     public ResponseEntity<Map<String, Object>> getAllMedicines() {

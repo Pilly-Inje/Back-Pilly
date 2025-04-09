@@ -11,6 +11,7 @@ import com.inje.pilly.repository.MedicineEffectivenessRepository;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import javax.management.ObjectName;
 import java.time.LocalDate;
@@ -68,7 +69,7 @@ public class SideEffectTrainService {
             payload.put("data", deduplicated);
             System.out.println("data: "+payload);
             String response = webClient.post()
-                    .uri("http://13.209.139.80:8000/train-side-effect")
+                    .uri("/predict-side-effect")
                     .bodyValue(payload)
                     .retrieve()
                     .bodyToMono(String.class)
@@ -76,8 +77,10 @@ public class SideEffectTrainService {
 
             System.out.println("FastAPI 학습 응답: " + response);
 
+        } catch (WebClientResponseException e) {
+            System.err.println("예측 실패 (webclient 오류): " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
         } catch (Exception e) {
-            System.err.println("학습 요청 실패: " + e.getMessage());
+            System.err.println("예측 실패 (기타 오류): " + e.getMessage());
         }
     }
 }
