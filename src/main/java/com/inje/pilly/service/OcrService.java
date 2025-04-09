@@ -28,6 +28,7 @@ public class OcrService {
     public List<String> extractTextFromImage(String gcsImageUrl) throws IOException{
         System.out.println("Received fileUrl: "+gcsImageUrl);
         String gcsUri = convertToGcsUri(gcsImageUrl);
+
         ClassPathResource resource = new ClassPathResource("ocr-project.json");
 
         GoogleCredentials credentials = GoogleCredentials.fromStream(resource.getInputStream());
