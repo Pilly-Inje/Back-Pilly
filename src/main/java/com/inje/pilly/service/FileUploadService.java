@@ -31,7 +31,7 @@ public class FileUploadService {
         this.ocrService = ocrService;
     }
 
-    // GCS에 파일 업로드
+    // GCS에 파일 업로드  dd
     public String uploadFile(MultipartFile file) throws IOException {
         String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
 
