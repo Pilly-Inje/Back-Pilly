@@ -5,6 +5,9 @@ import com.inje.pilly.dto.HealthDataRequestDTO;
 import com.inje.pilly.service.HealthDataService;
 import com.inje.pilly.service.HealthPredictService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +41,17 @@ public class HealthDataController {
         return ResponseEntity.ok(data);
     }
 
-    @Operation(summary = "사용자 건강 상태 피로도 예측 문구", description = "")
+    @Operation(summary = "사용자 건강 상태 피로도 예측 문구", description = "",
+                responses = {
+                        @ApiResponse(
+                                responseCode = "200",
+                                description = "피로도 예측 결과",
+                                content = @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(example = "{\"predictedFatigue\": 0.75, \"feedback\": \"당신은 현재 피로도가 높습니다.\"}")
+                                )
+                        )
+                })
     @GetMapping("/predict/{userId}")
     public ResponseEntity<Map<String, Object>> predictFatigue(@PathVariable Long userId) {
         double result = healthPredictService.predictFatigue(userId);

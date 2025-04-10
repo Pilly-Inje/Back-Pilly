@@ -48,23 +48,17 @@ public class PrescriptionController {
     }
     @Operation(summary = "특정 처방전 시간 수정")
     @PutMapping("/updateTime")
-    public ResponseEntity<Map<String, Object>> updatePrescriptionTime(@RequestBody UpdateAlarmTimeRequestDTO request) {
+    public ResponseEntity<MessageResponseDTO> updatePrescriptionTime(@RequestBody UpdateAlarmTimeRequestDTO request) {
         String resultMessage = prescriptionService.updatePrescriptionTime(request);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", resultMessage);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new MessageResponseDTO(resultMessage));
     }
     @Operation(summary = "특정 처방전 시간 삭제")
     @DeleteMapping("/delete-time")
-    public ResponseEntity<Map<String, Object>> deletePrescriptionTime(@RequestBody UpdateAlarmTimeRequestDTO request) {
+    public ResponseEntity<MessageResponseDTO> deletePrescriptionTime(@RequestBody UpdateAlarmTimeRequestDTO request) {
         String resultMessage = prescriptionService.deletePrescriptionTime(request);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", resultMessage);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new MessageResponseDTO(resultMessage));
     }
     @Operation(summary = "날짜, 시간별 처방전 ")
     @GetMapping("/alarm/{userId}/{time}")
