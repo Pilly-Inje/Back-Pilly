@@ -7,6 +7,7 @@ import com.inje.pilly.dto.MedicineEffectivenessResponseDTO;
 import com.inje.pilly.entity.MedicineEffectiveness;
 import com.inje.pilly.service.MedicineEffectivenessService;
 import com.inje.pilly.service.SideEffectTrainService;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,6 +22,8 @@ public class MedicineEffectivenessController {
     public MedicineEffectivenessController(MedicineEffectivenessService medicineEffectivenessService){
         this.medicineEffectivenessService = medicineEffectivenessService;
     }
+
+    @Operation(summary = "사용자 약 부작용 입력", description = "sideEffects:[\"두통\", \"복통\", \"두드러기\", \"구토\", \"가려움증\"]")
     @PostMapping
     public ResponseEntity<MedicineEffectivenessResponseDTO> createEffectiveness(@RequestBody MedicineEffectivenessDTO dto) throws JsonProcessingException {
         // 부작용 정보를 저장-> 학습 요청 트리거
